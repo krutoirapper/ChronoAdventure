@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Хроно-приключение</title>
+    <link rel="icon" href="favicon.ico">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        :root {
+            --primary: #00ff9d;
+            --secondary: #0095ff;
+            --background: #0a0a0a;
+            --text: #e0e0e0;
+            --highlight: #ff00aa;
+            --warning: #ff9500;
+        }
+        
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: var(--background);
+            color: var(--primary);
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 1s cubic-bezier(0.22, 1, 0.36, 1);
+            position: relative;
+            user-select: none; /* Запрещаем выделение текста */
+            -webkit-user-select: none; /* Для Safari */
+        }
+        
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, 
+                        rgba(0, 255, 157, 0.05) 0%, 
+                        rgba(0, 0, 0, 0) 70%);
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        #timer {
+            font-size: 5rem;
+            margin: 2rem 0;
+            text-shadow: 0 0 15px var(--primary), 
+                         0 0 30px rgba(0, 255, 157, 0.3);
+            letter-spacing: 0.5rem;
+            font-weight: 700;
+            position: relative;
+            transition: all 0.5s ease;
+        }
+        
+        #timer::after {
+            content: "";
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50%;
+            height: 3px;
+            background: linear-gradient(90deg, 
+                        transparent, 
+                        var(--primary), 
+                        transparent);
+            opacity: 0.7;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        button {
+            background-color: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 12px 24px;
+            margin: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            font-family: inherit;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            outline: none;
+            border-radius: 2px;
+            user-select: none;
+        }
+        
+        button::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                        transparent, 
+                        rgba(0, 255, 157, 0.2), 
+                        transparent);
+            transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        
+        button:hover {
+            background-color: rgba(0, 255, 157, 0.1);
+            box-shadow: 0 0 15px rgba(0, 255, 157, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        button:hover::before {
+            left: 100%;
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        #inventory {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            border: 1px solid rgba(0, 255, 157, 0.3);
+            padding: 15px;
+            min-width: 180px;
+            background-color: rgba(10, 10, 10, 0.8);
+            backdrop-filter: blur(5px);
+            border-radius: 4px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            transform: translateX(calc(100% + 20px));
+            transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+            user-select: none;
+        }
+        
+        #inventory.visible {
+            transform: translateX(0);
+        }
+        
+        #inventory h3 {
+            margin-top: 0;
+            border-bottom: 1px solid rgba(0, 255, 157, 0.3);
+            padding-bottom: 8px;
+            color: var(--secondary);
+        }
+        
+        #inventoryItems {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .inventory-item {
+            padding: 6px 10px;
+            background-color: rgba(0, 149, 255, 0.1);
+            border-left: 2px solid var(--secondary);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .inventory-item::before {
+            content: "»";
+            margin-right: 8px;
+            color: var(--highlight);
+        }
+        
+        #messageBox {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background-color: rgba(10, 10, 10, 0.9);
+            border: 1px solid var(--primary);
+            padding: 20px;
+            max-width: 80%;
+            width: 500px;
+            transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+            text-align: center;
+            border-radius: 4px;
+            box-shadow: 0 0 30px rgba(0, 255, 157, 0.2);
+            opacity: 0;
+            backdrop-filter: blur(5px);
+            user-select: none;
+        }
+        
+        #messageBox.visible {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        
+        #puzzleContainer {
+            margin: 2rem auto;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            max-width: 400px;
+        }
+        
+        .puzzle-piece {
+            aspect-ratio: 1;
+            background-color: rgba(20, 20, 20, 0.8);
+            border: 1px solid rgba(0, 255, 157, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            border-radius: 2px;
+        }
+        
+        .puzzle-piece::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--primary);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .puzzle-piece.active::after {
+            opacity: 0.3;
+        }
+        
+        .puzzle-piece:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(0, 255, 157, 0.2);
+            transform: scale(1.05);
+        }
+        
+        #miniGameCanvas {
+            border: 1px solid rgba(0, 255, 157, 0.3);
+            margin: 2rem 0;
+            background-color: rgba(20, 20, 20, 0.8);
+            border-radius: 4px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+            max-width: 100%;
+        }
+        
+        #miniGameScore {
+            font-size: 1.2rem;
+            margin: 1rem 0;
+            color: var(--secondary);
+        }
+        
+        #textAdventure {
+            margin: 2rem auto;
+            max-width: 600px;
+            width: 90%;
+            border: 1px solid rgba(0, 255, 157, 0.3);
+            padding: 25px;
+            background-color: rgba(10, 10, 10, 0.8);
+            border-radius: 4px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+        }
+        
+        #textScenario {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+            color: var(--text);
+            user-select: none;
+        }
+        
+        #textChoices {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        #endingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--background);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1s ease;
+        }
+        
+        #endingScreen.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        #endingContent {
+            text-align: center;
+            max-width: 600px;
+            padding: 2rem;
+            background-color: rgba(10, 10, 10, 0.9);
+            border: 1px solid rgba(0, 255, 157, 0.3);
+            border-radius: 4px;
+            box-shadow: 0 0 50px rgba(0, 255, 157, 0.1);
+            transform: scale(0.9);
+            transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+            opacity: 0;
+        }
+        
+        #endingScreen.visible #endingContent {
+            transform: scale(1);
+            opacity: 1;
+        }
+        
+        #endingScreen h1 {
+            color: var(--highlight);
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 15px var(--highlight);
+        }
+        
+        #endingScreen p {
+            font-size: 1.2rem;
+            margin: 0.5rem 0;
+            color: var(--text);
+        }
+        
+        #finalTime {
+            color: var(--primary);
+            font-weight: bold;
+        }
+        
+        .stage {
+            background-color: rgba(10, 10, 10, 0.8);
+            border: 1px solid rgba(0, 255, 157, 0.3);
+            padding: 2rem;
+            border-radius: 4px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 90%;
+            margin: 1rem auto;
+            text-align: center;
+            backdrop-filter: blur(5px);
+            transform: translateY(20px);
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        
+        .stage.visible {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .stage h2 {
+            color: var(--secondary);
+            margin-top: 0;
+            font-size: 1.8rem;
+        }
+        
+        .stage p {
+            color: var(--text);
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+        
+        /* Анимации */
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite ease-in-out;
+        }
+        
+        .float {
+            animation: float 3s infinite ease-in-out;
+        }
+        
+        /* Эффекты частиц */
+        .particle {
+            position: absolute;
+            background-color: var(--primary);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+    <div id="timer">00:00</div>
+    
+    <div id="inventory">
+        <h3>Инвентарь</h3>
+        <div id="inventoryItems"></div>
+    </div>
+    
+    <div id="messageBox">
+        <div id="messageText"></div>
+    </div>
+    
+    <div id="stage1" class="stage">
+        <h2 class="pulse">Обнаружена аномалия</h2>
+        <p>Пространство вокруг вас вибрирует. Время ведёт себя нестабильно. Что будете делать?</p>
+        <div>
+            <button id="exploreBtn">Исследовать</button>
+        </div>
+    </div>
+    
+    <div id="stage2" class="stage">
+        <h2>Объект временного смещения</h2>
+        <p>Перед вами появляется мерцающий предмет неизвестного происхождения. Он излучает странную энергию.</p>
+        <div>
+            <button id="takeItemBtn">Взаимодействовать</button>
+            <button id="ignoreItemBtn">Оставить</button>
+        </div>
+    </div>
+    
+    <div id="stage3" class="stage">
+        <h2>Темпоральный пазл</h2>
+        <p>Чтобы продолжить, восстановите последовательность временных маркеров:</p>
+        <div id="puzzleContainer"></div>
+        <p><small>Запомните активированные ячейки и повторите последовательность</small></p>
+    </div>
+    
+    <div id="stage4" class="stage">
+        <h2>Квантовые флуктуации</h2>
+        <p>Ловите появляющиеся частицы, чтобы стабилизировать временной континуум:</p>
+        <canvas id="miniGameCanvas" width="500" height="350"></canvas>
+        <p id="miniGameScore">Стабилизация: <span>0</span>/10</p>
+    </div>
+    
+    <div id="stage5" class="stage">
+        <div id="textAdventure">
+            <h2>Перекрёсток времён</h2>
+            <p id="textScenario">Перед вами расходятся три временные линии. Каждая ведёт к разным последствиям...</p>
+            <div id="textChoices"></div>
+        </div>
+    </div>
+    
+    <div id="endingScreen">
+        <div id="endingContent">
+            <h1>ХРОНОПУТЕШЕСТВИЕ ЗАВЕРШЕНО</h1>
+            <p>Вы успешно преодолели временные аномалии</p>
+            <p>Ваше время: <span id="finalTime"></span></p>
+            <p>Вселенная благодарит вас за восстановление баланса</p>
+            <p class="float">Обновите страницу, чтобы начать заново</p>
+        </div>
+    </div>
+
+    <script>
+        // Основные переменные
+        let seconds = 0;
+        let timerInterval;
+        let currentStage = 0;
+        let inventory = [];
+        let puzzlePattern = [];
+        let playerPattern = [];
+        let miniGameScore = 0;
+        let dots = [];
+        let lastDotTime = 0;
+        let canvas, ctx;
+        let particles = [];
+        let gameActive = true;
+        
+        // Инициализация
+        window.onload = function() {
+            canvas = document.getElementById('miniGameCanvas');
+            ctx = canvas.getContext('2d');
+            
+            // Адаптировать canvas под размер экрана
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // Начать таймер
+            timerInterval = setInterval(updateTimer, 1000);
+            
+            // Настроить обработчики событий
+            document.getElementById('exploreBtn').addEventListener('click', explore);
+            document.getElementById('takeItemBtn').addEventListener('click', takeItem);
+            document.getElementById('ignoreItemBtn').addEventListener('click', ignoreItem);
+            
+            canvas.addEventListener('click', handleCanvasClick);
+            
+            // Создать эффект частиц
+            createParticles();
+            requestAnimationFrame(updateParticles);
+            
+            // Начать игру через 10 секунд
+            setTimeout(() => {
+                showStage(1);
+                currentStage = 1;
+                showMessage("Обнаружена временная аномалия...");
+                createParticleBurst(50);
+            }, 10000);
+        };
+        
+        function resizeCanvas() {
+            const containerWidth = document.getElementById('stage4').clientWidth;
+            const maxWidth = Math.min(500, containerWidth - 40);
+            canvas.width = maxWidth;
+            canvas.height = maxWidth * 0.7;
+        }
+        
+        // Функции таймера
+        function updateTimer() {
+            if (gameActive) {
+                seconds++;
+                const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const secs = (seconds % 60).toString().padStart(2, '0');
+                document.getElementById('timer').textContent = `${mins}:${secs}`;
+                
+                // Пульсация таймера каждую секунду
+                const timer = document.getElementById('timer');
+                timer.style.transform = 'scale(1.1)';
+                setTimeout(() => {
+                    timer.style.transform = 'scale(1)';
+                }, 200);
+            }
+        }
+        
+        // Функции этапов
+        function showStage(stageNumber) {
+            // Скрыть текущий этап
+            if (currentStage > 0) {
+                const currentStageElement = document.getElementById(`stage${currentStage}`);
+                currentStageElement.classList.remove('visible');
+                setTimeout(() => {
+                    currentStageElement.classList.add('hidden');
+                }, 500);
+            }
+            
+            // Показать новый этап
+            const newStageElement = document.getElementById(`stage${stageNumber}`);
+            newStageElement.classList.remove('hidden');
+            setTimeout(() => {
+                newStageElement.classList.add('visible');
+            }, 50);
+            
+            // Специальные эффекты для определенных этапов
+            if (stageNumber === 2) {
+                createParticleBurst(20, '#00ff9d');
+            } else if (stageNumber === 3) {
+                setTimeout(() => {
+                    generatePuzzle();
+                }, 500);
+            } else if (stageNumber === 4) {
+                setTimeout(() => {
+                    startMiniGame();
+                }, 500);
+            } else if (stageNumber === 5) {
+                setTimeout(() => {
+                    startTextAdventure();
+                }, 500);
+            }
+        }
+        
+        function explore() {
+            inventory.push('Сканер аномалий');
+            updateInventory();
+            showMessage("Сканер добавлен в инвентарь");
+            
+            // Анимация исчезновения
+            document.getElementById('stage1').classList.remove('visible');
+            setTimeout(() => {
+                document.getElementById('stage1').classList.add('hidden');
+            }, 500);
+            
+            // Показать инвентарь
+            setTimeout(() => {
+                document.getElementById('inventory').classList.add('visible');
+            }, 1000);
+            
+            // Показать следующий этап через 5 секунд
+            setTimeout(() => {
+                showStage(2);
+                currentStage = 2;
+            }, 5000);
+        }
+        
+        function takeItem() {
+            inventory.push('Темпоральный фрагмент');
+            updateInventory();
+            showMessage("Фрагмент времени добавлен в инвентарь");
+            createParticleBurst(15, '#0095ff');
+            
+            document.getElementById('stage2').classList.remove('visible');
+            setTimeout(() => {
+                document.getElementById('stage2').classList.add('hidden');
+            }, 500);
+            
+            // Показать следующий этап через 5 секунд
+            setTimeout(() => {
+                showStage(3);
+                currentStage = 3;
+            }, 5000);
+        }
+        
+        function ignoreItem() {
+            showMessage("Вы оставили артефакт... но он исчез");
+            document.getElementById('stage2').classList.remove('visible');
+            setTimeout(() => {
+                document.getElementById('stage2').classList.add('hidden');
+                
+                // Показать следующий этап через 5 секунд
+                setTimeout(() => {
+                    showStage(3);
+                    currentStage = 3;
+                }, 5000);
+            }, 500);
+        }
+        
+        function updateInventory() {
+            const inventoryElement = document.getElementById('inventoryItems');
+            inventoryElement.innerHTML = '';
+            inventory.forEach(item => {
+                const itemElement = document.createElement('div');
+                itemElement.className = 'inventory-item';
+                itemElement.textContent = item;
+                inventoryElement.appendChild(itemElement);
+            });
+        }
+        
+        function showMessage(message) {
+            const messageBox = document.getElementById('messageBox');
+            const messageText = document.getElementById('messageText');
+            
+            messageText.textContent = message;
+            
+            // Показать сообщение
+            messageBox.classList.add('visible');
+            
+            // Скрыть через 3 секунды (кроме финального сообщения)
+            if (!message.includes("путешествие завершено")) {
+                setTimeout(() => {
+                    messageBox.classList.remove('visible');
+                }, 3000);
+            }
+        }
+        
+        // Головоломка
+        function generatePuzzle() {
+            const puzzleContainer = document.getElementById('puzzleContainer');
+            puzzleContainer.innerHTML = '';
+            puzzlePattern = [];
+            playerPattern = [];
+            
+            // Создать 9 элементов головоломки
+            for (let i = 0; i < 9; i++) {
+                const piece = document.createElement('div');
+                piece.className = 'puzzle-piece';
+                piece.dataset.index = i;
+                piece.addEventListener('click', () => handlePuzzleClick(i));
+                puzzleContainer.appendChild(piece);
+            }
+            
+            // Создать паттерн из 3 уникальных случайных чисел
+            while (puzzlePattern.length < 3) {
+                const randomIndex = Math.floor(Math.random() * 9);
+                if (!puzzlePattern.includes(randomIndex)) {
+                    puzzlePattern.push(randomIndex);
+                }
+            }
+            
+            // Показать узор через небольшой таймаут после отрисовки
+            setTimeout(showPuzzlePattern, 300);
+        }
+        
+        function showPuzzlePattern() {
+            // Сначала сбросим все активные состояния
+            document.querySelectorAll('.puzzle-piece').forEach(piece => {
+                piece.classList.remove('active');
+            });
+            
+            // Показываем паттерн с задержкой между элементами
+            puzzlePattern.forEach((index, i) => {
+                setTimeout(() => {
+                    const piece = document.querySelector(`.puzzle-piece[data-index="${index}"]`);
+                    piece.classList.add('active');
+                    
+                    setTimeout(() => {
+                        piece.classList.remove('active');
+                    }, 800);
+                }, i * 1000); // Задержка между элементами 1 секунда
+            });
+        }
+        
+        function handlePuzzleClick(index) {
+            const piece = document.querySelector(`.puzzle-piece[data-index="${index}"]`);
+            
+            // Анимация клика
+            piece.classList.add('active');
+            setTimeout(() => {
+                piece.classList.remove('active');
+            }, 300);
+            
+            playerPattern.push(index);
+            
+            // Проверить решение после каждого клика
+            checkPuzzleSolution();
+        }
+        
+        function checkPuzzleSolution() {
+            // Проверяем только когда набрано достаточно кликов
+            if (playerPattern.length === puzzlePattern.length) {
+                const isCorrect = playerPattern.every((val, i) => val === puzzlePattern[i]);
+                
+                if (isCorrect) {
+                    showMessage("Последовательность восстановлена!");
+                    setTimeout(() => {
+                        document.getElementById('stage3').classList.remove('visible');
+                        setTimeout(() => {
+                            document.getElementById('stage3').classList.add('hidden');
+                            
+                            // Показать следующий этап через 5 секунд
+                            setTimeout(() => {
+                                showStage(4);
+                                currentStage = 4;
+                            }, 5000);
+                        }, 500);
+                    }, 1500);
+                    
+                    createParticleBurst(30, '#ff00aa');
+                } else {
+                    showMessage("Ошибка! Попробуйте снова");
+                    playerPattern = [];
+                    setTimeout(showPuzzlePattern, 1000);
+                }
+            }
+        }
+        
+        // Мини-игра с частицами
+        function startMiniGame() {
+            miniGameScore = 0;
+            document.querySelector('#miniGameScore span').textContent = miniGameScore;
+            dots = [];
+            lastDotTime = performance.now();
+            
+            // Очистить canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Запустить игровой цикл
+            requestAnimationFrame(updateMiniGame);
+        }
+        
+        function updateMiniGame(timestamp) {
+            // Очистить canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Добавить новую точку каждые 0.5-2 секунды, если точек меньше 5 и игра активна
+            if (dots.length < 5 && timestamp - lastDotTime > 500 + Math.random() * 1500 && miniGameScore < 10) {
+                addDot();
+                lastDotTime = timestamp;
+            }
+            
+            // Отрисовать все точки
+            dots.forEach((dot, index) => {
+                const age = timestamp - dot.bornTime;
+                const lifePercent = age / dot.lifetime;
+                
+                if (lifePercent <= 1) {
+                    // Рассчитать текущий размер и прозрачность
+                    const currentSize = dot.size * (1 + lifePercent * 0.5);
+                    const alpha = 1 - lifePercent;
+                    
+                    // Нарисовать точку
+                    ctx.globalAlpha = alpha;
+                    ctx.fillStyle = dot.color;
+                    ctx.beginPath();
+                    ctx.arc(dot.x, dot.y, currentSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Нарисовать свечение
+                    ctx.globalAlpha = alpha * 0.3;
+                    ctx.beginPath();
+                    ctx.arc(dot.x, dot.y, currentSize * 2, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Удалить исчезнувшие точки
+                    dots.splice(index, 1);
+                }
+            });
+            
+            ctx.globalAlpha = 1.0;
+            
+            // Продолжить игру, если еще не набрали 10 очков
+            if (miniGameScore < 10) {
+                requestAnimationFrame(updateMiniGame);
+            } else {
+                showMessage("Флуктуации стабилизированы!");
+                setTimeout(() => {
+                    document.getElementById('stage4').classList.remove('visible');
+                    setTimeout(() => {
+                        document.getElementById('stage4').classList.add('hidden');
+                        
+                        // Показать следующий этап через 5 секунд
+                        setTimeout(() => {
+                            showStage(5);
+                            currentStage = 5;
+                        }, 5000);
+                    }, 500);
+                }, 1500);
+            }
+        }
+        
+        function addDot() {
+            const colors = ['#00ff9d', '#0095ff', '#ff00aa', '#ff9500', '#bf5fff'];
+            dots.push({
+                x: 30 + Math.random() * (canvas.width - 60),
+                y: 30 + Math.random() * (canvas.height - 60),
+                size: 5 + Math.random() * 10,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                bornTime: performance.now(),
+                lifetime: 2000 + Math.random() * 3000
+            });
+        }
+        
+        function handleCanvasClick(e) {
+            // Если уже набрали 10 очков, не обрабатываем клики
+            if (miniGameScore >= 10) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            const now = performance.now();
+            
+            // Проверить, попал ли клик по точке
+            for (let i = dots.length - 1; i >= 0; i--) {
+                const dot = dots[i];
+                const age = now - dot.bornTime;
+                const lifePercent = age / dot.lifetime;
+                
+                if (lifePercent <= 1) {
+                    const currentSize = dot.size * (1 + lifePercent * 0.5);
+                    const distance = Math.sqrt((x - dot.x) ** 2 + (y - dot.y) ** 2);
+                    
+                    if (distance < currentSize) {
+                        // Попадание!
+                        miniGameScore++;
+                        document.querySelector('#miniGameScore span').textContent = miniGameScore;
+                        dots.splice(i, 1);
+                        
+                        // Эффект при попадании
+                        createParticleBurst(15, dot.color, e.clientX, e.clientY);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Текстовое приключение
+        function startTextAdventure() {
+            const scenarios = [
+                {
+                    id: 1,
+                    text: "Перед вами расходятся три временные линии. Каждая ведёт к разным вариантам будущего. Какой путь выберете?",
+                    choices: [
+                        { text: "Линия прошлого (синяя)", next: 2 },
+                        { text: "Линия настоящего (зелёная)", next: 3 },
+                        { text: "Линия будущего (красная)", next: 4 }
+                    ]
+                },
+                {
+                    id: 2,
+                    text: "Вы переноситесь в прошлое. Перед вами древний храм времени. Внутри находится артефакт невероятной мощности.",
+                    choices: [
+                        { text: "Взять артефакт", next: 5 },
+                        { text: "Исследовать храм", next: 6 },
+                        { text: "Вернуться к выбору", next: 1 }
+                    ]
+                },
+                {
+                    id: 3,
+                    text: "Вы остаётесь в настоящем. Вокруг вас формируется временная буря. Нужно действовать быстро.",
+                    choices: [
+                        { text: "Попытаться стабилизировать бурю", next: 7 },
+                        { text: "Найти укрытие", next: 8 },
+                        { text: "Вернуться к выбору", next: 1 }
+                    ]
+                },
+                {
+                    id: 4,
+                    text: "Вы попадаете в далёкое будущее. Технологии слились с природой. Местные жители предлагают вам помощь.",
+                    choices: [
+                        { text: "Принять помощь", next: 9 },
+                        { text: "Отказаться и исследовать самостоятельно", next: 10 },
+                        { text: "Вернуться к выбору", next: 1 }
+                    ]
+                },
+                {
+                    id: 5,
+                    text: "Артефакт даёт вам власть над временем. Вы становитесь Хранителем Времени, обеспечивая баланс во всех эпохах.",
+                    choices: [
+                        { text: "Завершить путешествие", next: 11 }
+                    ]
+                },
+                {
+                    id: 6,
+                    text: "Исследовав храм, вы находите древние знания о природе времени. Став мудрецом, вы обучаете других искусству темпоральной навигации.",
+                    choices: [
+                        { text: "Завершить путешествие", next: 11 }
+                    ]
+                },
+                {
+                    id: 7,
+                    text: "Используя свои навыки, вы стабилизируете бурю. Ваши действия предотвращают временной коллапс. Вы становитесь героем современности.",
+                    choices: [
+                        { text: "Завершить путешествие", next: 11 }
+                    ]
+                },
+                {
+                    id: 8,
+                    text: "Найдя укрытие, вы пережидаете бурю. Когда она проходит, вы обнаруживаете, что мир изменился - теперь вы в альтернативной реальности.",
+                    choices: [
+                        { text: "Завершить путешествие", next: 11 }
+                    ]
+                },
+                {
+                    id: 9,
+                    text: "Жители будущего делятся с вами технологиями временных путешествий. Вы становитесь послом между эпохами, соединяя прошлое, настоящее и будущее.",
+                    choices: [
+                        { text: "Завершить путешествие", next: 11 }
+                    ]
+                },
+                {
+                    id: 10,
+                    text: "Самостоятельно исследуя будущее, вы находите способ вернуться в своё время с уникальными знаниями, которые меняют ход истории.",
+                    choices: [
+                        { text: "Завершить путешествие", next: 11 }
+                    ]
+                },
+                {
+                    id: 11,
+                    text: "Ваше путешествие завершено. Временной континуум стабилизирован. Вы возвращаетесь домой, сохраняя воспоминания о своём приключении.",
+                    choices: []
+                }
+            ];
+            
+            displayScenario(1, scenarios);
+        }
+        
+        function displayScenario(id, scenarios) {
+            const scenario = scenarios.find(s => s.id === id);
+            const textElement = document.getElementById('textScenario');
+            const choicesElement = document.getElementById('textChoices');
+            
+            textElement.textContent = scenario.text;
+            choicesElement.innerHTML = '';
+            
+            scenario.choices.forEach(choice => {
+                const button = document.createElement('button');
+                button.textContent = choice.text;
+                button.addEventListener('click', () => {
+                    if (choice.next === 11) {
+                        // Остановить таймер при выборе завершения
+                        gameActive = false;
+                        
+                        // Показать сообщение о завершении на 5 секунд
+                        showMessage("Ваше путешествие завершено");
+                        
+                        setTimeout(() => {
+                            document.getElementById('stage5').classList.remove('visible');
+                            setTimeout(() => {
+                                document.getElementById('stage5').classList.add('hidden');
+                                
+                                // Показать концовку через 1 секунду
+                                setTimeout(() => {
+                                    showEnding();
+                                    currentStage = 6;
+                                }, 1000);
+                            }, 500);
+                        }, 5000);
+                    }
+                    displayScenario(choice.next, scenarios);
+                });
+                choicesElement.appendChild(button);
+            });
+        }
+        
+        // Концовка
+        function showEnding() {
+            document.getElementById('finalTime').textContent = document.getElementById('timer').textContent;
+            
+            const endingScreen = document.getElementById('endingScreen');
+            endingScreen.classList.add('visible');
+            
+            // Создать эффект звездного неба
+            createStarfield();
+        }
+        
+        function createStarfield() {
+            const endingScreen = document.getElementById('endingScreen');
+            
+            for (let i = 0; i < 200; i++) {
+                const star = document.createElement('div');
+                star.className = 'particle';
+                star.style.width = `${Math.random() * 3}px`;
+                star.style.height = star.style.width;
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.top = `${Math.random() * 100}%`;
+                star.style.opacity = Math.random();
+                star.style.animation = `float ${5 + Math.random() * 10}s infinite ease-in-out`;
+                star.style.animationDelay = `${Math.random() * 5}s`;
+                
+                // Разные цвета звезд
+                const colors = ['#00ff9d', '#0095ff', '#ffffff', '#ff00aa', '#ff9500'];
+                star.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                
+                endingScreen.appendChild(star);
+            }
+        }
+        
+        // Эффекты частиц
+        function createParticles() {
+            for (let i = 0; i < 50; i++) {
+                particles.push({
+                    x: Math.random() * window.innerWidth,
+                    y: Math.random() * window.innerHeight,
+                    size: Math.random() * 3,
+                    speedX: (Math.random() - 0.5) * 0.2,
+                    speedY: (Math.random() - 0.5) * 0.2,
+                    color: `rgba(0, 255, 157, ${Math.random() * 0.2})`
+                });
+            }
+        }
+        
+        function updateParticles() {
+            const particleElements = document.querySelectorAll('.particle');
+            
+            particles.forEach((particle, i) => {
+                particle.x += particle.speedX;
+                particle.y += particle.speedY;
+                
+                // Если частица вышла за границы экрана - вернуть ее
+                if (particle.x < 0 || particle.x > window.innerWidth || 
+                    particle.y < 0 || particle.y > window.innerHeight) {
+                    particle.x = Math.random() * window.innerWidth;
+                    particle.y = Math.random() * window.innerHeight;
+                }
+                
+                if (particleElements[i]) {
+                    particleElements[i].style.transform = `translate(${particle.x}px, ${particle.y}px)`;
+                }
+            });
+            
+            requestAnimationFrame(updateParticles);
+        }
+        
+        function createParticleBurst(count, color = '#00ff9d', x = null, y = null) {
+            const burstContainer = document.createElement('div');
+            burstContainer.style.position = 'fixed';
+            burstContainer.style.pointerEvents = 'none';
+            burstContainer.style.zIndex = '100';
+            
+            if (x && y) {
+                burstContainer.style.left = `${x}px`;
+                burstContainer.style.top = `${y}px`;
+                burstContainer.style.transform = 'translate(-50%, -50%)';
+            } else {
+                burstContainer.style.left = '50%';
+                burstContainer.style.top = '50%';
+                burstContainer.style.transform = 'translate(-50%, -50%)';
+            }
+            
+            document.body.appendChild(burstContainer);
+            
+            for (let i = 0; i < count; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.width = `${2 + Math.random() * 4}px`;
+                particle.style.height = particle.style.width;
+                particle.style.backgroundColor = color;
+                particle.style.position = 'absolute';
+                particle.style.borderRadius = '50%';
+                
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 10 + Math.random() * 50;
+                const duration = 0.5 + Math.random() * 1;
+                
+                particle.style.transition = `all ${duration}s ease-out`;
+                particle.style.opacity = '1';
+                
+                burstContainer.appendChild(particle);
+                
+                setTimeout(() => {
+                    particle.style.transform = `translate(${Math.cos(angle) * distance}px, ${Math.sin(angle) * distance}px)`;
+                    particle.style.opacity = '0';
+                }, 10);
+                
+                setTimeout(() => {
+                    particle.remove();
+                }, duration * 1000 + 100);
+            }
+            
+            setTimeout(() => {
+                burstContainer.remove();
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
